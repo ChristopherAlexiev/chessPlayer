@@ -95,7 +95,7 @@ def analyzeTreeHelper(gameTree, player):
 		return minScore
 
 
-def chessPlayer(board, player):
+def chessPlayer2(board, player):
 	status = True
 	move = None
 	candidateMoves = None
@@ -108,14 +108,14 @@ def chessPlayer(board, player):
 		gameTree = genChessTree(list(board), playerToNextNode, None, None, 1)
 		candidateMoves = analyzeTree(gameTree, player)
 		
-		maxScore = -1
+		maxScore = -2
 		move = []
 		
 		for movv in candidateMoves:#check for immediate threat of check
 			tempBoard = movePiece(movv[0][0], movv[0][1], list(board))
 			testScore = analyzeBoard(tempBoard)
 			if (player == 10 and testScore[1] ==True) or (player == 20 and testScore[3] == True):
-				movv[1] = 0 #immediate threat of check is not acceptable, thus make it 0 score
+				movv[1] = -1 #immediate threat of check is not acceptable, thus make it 0 score
 
 		for i in candidateMoves:#convert raw score to decimal and get the best move
 			if i[1] > maxScore:
@@ -144,6 +144,246 @@ def genChessTree(boardAtNode, playerToNode, moveToNode, scoreAtNode, layerAtNode
 		tempTree = genChessTree(nextBoard, nextPlayerToNode, i, scoreAtNextNode, layerAtNextNode)
 		treey.AddSuccessor(tempTree)
 	return treey
+
+#########################################################################
+###PLAYER 2 TEST FUNCTIONS
+def analyzeBoard2(board):
+	#returned variables:
+	scoreWhite = 0
+	scoreBlack = 0
+	playerInWin = 0
+	playerInCheck = 0
+
+	#temp only in function variables:
+	blackInCheck = True
+	whiteInCheck = True
+	whiteWin = True
+	blackWin = True
+
+	KnightTable = [-50,-40,-30,-30,-30,-30,-40,-50,
+		-40,-20,  0,  0,  0,  0,-20,-40,
+		-30,  0, 10, 15, 15, 10,  0,-30,
+		-30,  5, 15, 20, 20, 15,  5,-30,
+		-30,  0, 15, 20, 20, 15,  0,-30,
+		-30,  5, 10, 15, 15, 10,  5,-30,
+		-40,-20,  0,  5,  5,  0,-20,-40,
+		-50,-40,-20,-30,-30,-20,-40,-50]
+
+	BishopTable = [
+		-20,-10,-10,-10,-10,-10,-10,-20,
+		-10,  0,  0,  0,  0,  0,  0,-10,
+		-10,  0,  5, 10, 10,  5,  0,-10,
+		-10,  5,  5, 10, 10,  5,  5,-10,
+		-10,  0, 10, 10, 10, 10,  0,-10,
+		-10, 10, 10, 10, 10, 10, 10,-10,
+		-10,  5,  0,  0,  0,  0,  5,-10,
+		-20,-10,-40,-10,-10,-40,-10,-20]
+
+	PawnTable = [
+		 0,  0,  0,  0,  0,  0,  0,  0,
+		50, 50, 50, 50, 50, 50, 50, 50,
+		10, 10, 20, 30, 30, 20, 10, 10,
+		 5,  5, 10, 27, 27, 10,  5,  5,
+		 0,  0,  0, 25, 25,  0,  0,  0,
+		 5, -5,-10,  0,  0,-10, -5,  5,
+		 5, 10, 10,-25,-25, 10, 10,  5,
+		 0,  0,  0,  0,  0,  0,  0,  0
+	]
+	for pos in range(64):
+		posPlay = posPlayer(pos, board)
+		if posPlay == 10:
+			pieceType = board[pos]-10
+			if pieceType == 0: #pawn
+				scoreWhite += 100
+				scoreWhite += PawnTable[convertPos(posPlay, pos)]
+			elif pieceType == 1: #knight
+				scoreWhite += 320
+				scoreWhite += KnightTable[convertPos(posPlay, pos)]
+			elif pieceType == 2: #bishop
+				scoreWhite +=325
+				scoreWhite += BishopTable[convertPos(posPlay, pos)]
+			elif pieceType == 3: #rook
+				scoreWhite += 500
+			elif pieceType == 4: #queen
+				scoreWhite += 975
+			elif pieceType == 5: #king
+				blackWin = False
+				whiteInCheck = IsPositionUnderThreat(board,pos,posPlay)
+		elif posPlay == 20:
+			pieceType = board[pos]-20
+			if pieceType == 0: #pawn
+				scoreBlack += 100
+				scoreBlack += PawnTable[convertPos(posPlay, pos)]
+			elif pieceType == 1: #knight
+				scoreBlack += 320
+				scoreBlack += KnightTable[convertPos(posPlay, pos)]
+			elif pieceType == 2: #bishop
+				scoreBlack += 325
+				scoreBlack += BishopTable[convertPos(posPlay, pos)]
+			elif pieceType == 3: #rook
+				scoreBlack += 500
+			elif pieceType == 4: #queen
+				scoreBlack += 975
+			elif pieceType == 5: #king
+				whiteWin = False
+				blackInCheck = IsPositionUnderThreat(board,pos,posPlay)
+	
+	#WHEN HAVE TIME: if incheck then check for checkmate
+
+	if blackWin == True:
+		playerInWin = 20
+		scoreWhite = 0
+	elif whiteWin == True:
+		playerInWin = 10
+		scoreBlack = 0
+	return [scoreWhite, whiteInCheck, scoreBlack, blackInCheck, playerInWin]
+
+def makeNebuScore(scores, playerToNode, player):
+	###OUT OF 5000
+	scoreDiff = 0
+	if (player == 10):
+		scoreDiff = scores[0]- scores[2]
+	else:
+		scoreDiff = scores[2]-scores[0]
+	
+	if playerToNode == 10:
+		playerToNextNode = 20
+	else:
+		playerToNextNode = 10
+
+	#check if player would leave themselves in a check, return 0 score if so
+	if (playerToNode == player):
+		if (player == 10 and scores[1] == True):
+			return -float(4000)/5000
+		elif (player == 20 and scores[3] == True):
+			return -float(4000)/5000
+	
+	#check if this move would kill player, return 0 if so
+	if player == 10 and scores[4] == 20:#scores[4] is a winning player
+		return -float(4000)/5000
+	elif player == 20 and scores[4] == 10:
+		return -float(4000)/5000
+
+	#check if the player would capture the opponent's king, return score 95 if possible
+	if player == 10 and scores[4] == 10:#scores[4] is a winning player
+		return float(4900)/5000
+	elif player == 20 and scores[4] == 20:
+		return float(4900)/5000
+
+	return float(scoreDiff)/5000
+
+def convertPos(player, pos):
+	if player == 10:
+		return 63-pos
+	else:
+		coors = genCoor(pos)
+		coors[1] = 7-coors[1]
+		pos = genPos(coors[0], coors[1])
+		return 63-pos
+
+def chessPlayer(board, player):
+	status = True
+	move = None
+	candidateMoves = None
+	evalTree = None
+	if (player == 10):
+		playerToNextNode = 20
+	else:
+		playerToNextNode = 10
+	try:
+		gameTree = genChessTree2(list(board), playerToNextNode, None, None, 1)
+		candidateMoves = analyzeTree2(gameTree, player)
+		
+		maxScore = -1
+		move = []
+		
+		for movv in candidateMoves:#check for immediate threat of check
+			tempBoard = movePiece(movv[0][0], movv[0][1], list(board))
+			testScore = analyzeBoard2(tempBoard)
+			if (player == 10 and testScore[1] ==True) or (player == 20 and testScore[3] == True):
+				movv[1] = 0 #immediate threat of check is not acceptable, thus make it 0 score
+
+		for i in candidateMoves:#convert raw score to decimal and get the best move
+			if i[1] > maxScore:
+				move = i[0]
+				maxScore = i[1]
+		evalTree = gameTree.Get_LevelOrder()
+	except:
+		status = False
+	return [status, move, candidateMoves,evalTree]
+
+def genChessTree2(boardAtNode, playerToNode, moveToNode, scoreAtNode, layerAtNode):
+	treey = tree([playerToNode, scoreAtNode, moveToNode])
+	nextPlayerToNode = 0
+	if (playerToNode  == 10):
+		nextPlayerToNode = 20
+	else:
+		nextPlayerToNode = 10
+	movesListy = getPossibleMoves(nextPlayerToNode, boardAtNode)
+	layerAtNextNode = layerAtNode +1
+	if (layerAtNode > 2 or len(movesListy) == 0 or (layerAtNode != 1 and scoreAtNode[4] != 0)):#the main levels
+		return treey
+	for i in movesListy:
+		nextBoard = movePiece(i[0], i[1], list(boardAtNode))
+		scoreAtNextNode = analyzeBoard2(nextBoard)
+		tempTree = genChessTree2(nextBoard, nextPlayerToNode, i, scoreAtNextNode, layerAtNextNode)
+		treey.AddSuccessor(tempTree)
+	return treey
+
+
+#returns list of moves with their max possible guaranteed scores [[move, score],[move, score]]
+def analyzeTree2(gameTree, player):
+	listy = []
+	for moveTree in gameTree.store[1]:
+		move = moveTree.store[0][2]#the moveToNode variable in the node of the tree
+		score = analyzeTreeHelper2(moveTree, player, -1, 1000000)
+		listy += [[move, score]]#the +5 is to differentiate between long term and immediate threat of death
+	return listy
+
+#returns max possible guaranteed score of that spot
+def analyzeTreeHelper2(gameTree, player, alpha, beta):
+	playerToNode = gameTree.store[0][0]
+	scoreAtNode = gameTree.store[0][1]
+	playerToNextNode = 0
+	scory = makeNebuScore(scoreAtNode, playerToNode, player)
+	if (playerToNode  == 10):
+		nextPlayerToNode = 20
+	else:
+		nextPlayerToNode = 10
+	#check if end of tree
+	if len(gameTree.store[1]) == 0:
+		#if final tree in a branch
+		if player == 10: #return score of player 10
+			if scoreAtNode[1] == True:#just in case check for check on last branch of tree, return 0 if so
+				return -float(4000)/5000
+			return scory
+		else: #return score of player 20
+			if scoreAtNode[3] == True:
+				return -float(4000)/5000
+			return scory
+	
+	if playerToNextNode == player:
+		#player can get the maximum score path
+		maxScore = -1
+		for gameNode in gameTree.store[1]:
+			tempScore = analyzeTreeHelper2(gameNode, player, alpha, beta)
+			maxScore = max(tempScore, maxScore)
+			beta = max(beta, maxScore)
+			if (beta>=alpha):
+				break
+		return maxScore
+	else:
+		#opponent tries to make minimal score path
+		minScore = 1000000
+		for gameNode in gameTree.store[1]:
+			tempScore = analyzeTreeHelper2(gameNode, player, alpha, beta)
+			minScore = min(tempScore, minScore)
+			beta = min(beta, minScore)
+			if (beta>=alpha):
+				break
+		return minScore
+###END OF TEST PLAYER 2
+################################
 
 ###GAMEPLAY FUNCTIONS
 def playPVP(board):
@@ -259,7 +499,7 @@ def playPVC(board, dumbness):
 			if (dumbness == 1):
 				computerMoveList = chessPlayerDumb(board,player)
 			elif (dumbness == 0):
-				computerMoveList = chessPlayer(board, player)
+				computerMoveList = chessPlayer2(board, player)
 			print "Computer's move:" + str(computerMoveList[1])
 			board = movePiece(computerMoveList[1][0], computerMoveList[1][1], board)
 			
@@ -285,6 +525,49 @@ def playPVC(board, dumbness):
 		else:
 			player = 10
 
+def playCVC(board):
+	player = 10
+	
+	while (True):
+		if player == 10:
+			printy = "WHITE"
+		else:
+			printy = "BLACK"
+		if (player == 10):
+			print "Computer WHITE plays as follows"
+			computerMoveList = []
+			computerMoveList = chessPlayer(board,player)
+			print "Computer's move:" + str(computerMoveList[1])
+			board = movePiece(computerMoveList[1][0], computerMoveList[1][1], board)
+
+		elif(player == 20):
+			print "Computer BLACK plays as follows"
+			computerMoveList = []
+			computerMoveList = chessPlayer2(board, player)
+			print "Computer's move:" + str(computerMoveList[1])
+			board = movePiece(computerMoveList[1][0], computerMoveList[1][1], board)
+			
+		scores = analyzeBoard(board)
+		print "\nBOARD AFTER MOVE:"
+		print printBoardPersonal(board)
+		print "Current score of player WHITE: "+ str(scores[0]) + " and BLACK: " + str(scores[2])
+		print "WHITE in check: "+ str(scores[1]) + " and BLACK in check: " + str(scores[3])
+		
+		if (scores[4] == 10 ):
+			print "!!!Player WHITE Won!!!"
+			printBoardPersonal(board)
+			break
+		elif (scores[4] == 20):
+			print "!!!Player BLACK Won!!!"
+			printBoardPersonal(board)
+			break
+		
+		print "NEXT TURN---------------------------------------------------"
+		
+		if (player == 10):
+			player = 20
+		else:
+			player = 10
 
 #assumes error checking completed.
 def movePiece(startPos, endPos, board):
@@ -477,7 +760,16 @@ def GetPlayerPositions(board,player):
 #where x is 0 to 7 and y is 0 to 7 
 def genPos(x,y):
 	return x+y*8
-
+def min(x,y):
+	if x<=y:
+		return x
+	else:
+		return y
+def max(x,y):
+	if x >= y:
+		return x
+	else:
+		return y
 #opposite of genPos	
 def genCoor(pos):
 	return [pos%8, pos/8]

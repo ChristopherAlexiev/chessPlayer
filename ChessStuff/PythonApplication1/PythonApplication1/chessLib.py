@@ -30,7 +30,7 @@ while(True):
 			playPVC(boardy, 0)
 			break
 		elif inputted == "4":
-			doneGame = True
+			playCVC(boardy)
 			break
 		else:
 			print "Please enter a valid input. Please enter \"1\" for 2 human players, \"2\" for player vs dumb computer, or \"3\" for player vs smart computer."
